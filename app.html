@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mini App | Workout + Donation Planner</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      background: #0b1220;
+      color: #e5e7eb;
+      display: grid;
+      place-items: center;
+      min-height: 100vh;
+      padding: 24px;
+    }
+    .app {
+      width: min(880px, 96%);
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 18px;
+      padding: 18px;
+      box-shadow: 0 18px 40px rgba(0,0,0,0.35);
+    }
+    h1 { margin: 6px 0 10px; font-size: 1.35rem; }
+    .muted { color: #cbd5e1; font-size: 0.95rem; }
+    .row { display: grid; grid-template-columns: 1fr; gap: 14px; margin-top: 14px; }
+    @media (min-width: 900px){ .row { grid-template-columns: 1fr 1fr; } }
+    .card {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 16px;
+      padding: 14px;
+    }
+    label { display:block; font-size: 0.9rem; color:#cbd5e1; margin-bottom:6px; }
+    input, select {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.18);
+      background: rgba(0,0,0,0.25);
+      color: #e5e7eb;
+      outline: none;
+    }
+    button {
+      border: 0;
+      border-radius: 12px;
+      padding: 10px 12px;
+      font-weight: 700;
+      cursor: pointer;
+      width: 100%;
+    }
+    .btn-primary { background: #e5e7eb; color: #0b1220; }
+    .btn-secondary { background: rgba(255,255,255,0.10); color: #e5e7eb; border: 1px solid rgba(255,255,255,0.18); }
+    .result {
+      margin-top: 10px;
+      padding: 12px;
+      border-radius: 14px;
+      background: rgba(34,197,94,0.12);
+      border: 1px solid rgba(34,197,94,0.35);
+    }
+    .tiny { font-size: 0.85rem; color:#cbd5e1; }
+    a { color: #e5e7eb; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <h1>Workout + Donation Planner</h1>
+    <div class="muted">
+      Generates a workout vibe + estimates how much you’d donate if you donate a % per item sold.
+      <br><span class="tiny">Link back: <a href="scratch.html">Return to Scratch Page</a></span>
+    </div>
+
+    <div class="row">
+      <div class="card">
+        <h2 style="margin:0 0 10px; font-size:1.05rem;">Outfit + Workout Generator</h2>
+
+        <label for="goal">Goal</label>
+        <select id="goal">
+          <option value="strength">Strength</option>
+          <option value="hypertrophy">Hypertrophy</option>
+          <option value="endurance">Endurance</option>
+          <option value="mobility">Mobility</option>
+        </select>
+
+        <label for="time">Time available (minutes)</label>
+        <input id="time" type="number" min="10" max="180" value="60">
+
+        <button class="btn-primary" id="gen">Generate</button>
+
+        <div class="result" id="workoutResult" style="display:none;"></div>
+      </div>
+
+      <div class="card">
+        <h2 style="margin:0 0 10px; font-size:1.05rem;">Donation Estimator</h2>
+
+        <label for="price">Price per item ($)</label>
+        <input id="price" type="number" min="1" step="0.01" value="45">
+
+        <label for="qty">Items sold</label>
+        <input id="qty" type="number" min="0" step="1" value="50">
+
+        <label for="pct">Donation percent (%)</label>
+        <input id="pct" type="number" min="0" max="100" value="10">
+
+        <button class="btn-secondary" id="calc">Calculate Donation</button>
+
+        <div class="result" id="donationResult" style="display:none;"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const workouts = {
+      strength: [
+        "5x5 Squat, 5x5 Bench, 3x8 Row, 6-min finisher: bike sprints",
+        "4x6 Deadlift, 4x6 Overhead Press, 3x10 Pull-ups (assisted ok), core circuit"
+      ],
+      hypertrophy: [
+        "3x12 Leg Press, 3x12 RDL, 3x15 Hip Thrust, 3x12 Lat Pulldown, 3x12 DB Press",
+        "Upper pump: 4x12 Incline DB, 4x12 Cable Row, 3x15 Lateral Raises, 3x15 Curls + Tris"
+      ],
+      endurance: [
+        "Intervals: 10-min warmup + 8 rounds (1 min hard / 1 min easy) + 5-min cooldown",
+        "Steady state: 35–50 min zone 2 + 8-min mobility cooldown"
+      ],
+      mobility: [
+        "Full-body flow: hips + thoracic + hamstrings (20–30 min) + easy walk",
+        "Yoga-style mobility: sun salutations + deep squat holds + couch stretch (25–40 min)"
+      ]
+    };
+
+    function pick(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
+
+    document.getElementById("gen").addEventListener("click", () => {
+      const goal = document.getElementById("goal").value;
+      const time = Number(document.getElementById("time").value || 60);
+
+      const outfit = pick([
+        "Matching set + crew socks + clean sneakers",
+        "Oversized tee + biker shorts + hair clip",
+        "Neutral leggings + sports bra + lightweight zip-up",
+        "Bright tank + shorts + tennis shoes"
+      ]);
+
+      const plan = pick(workouts[goal]);
+      const tweak = time < 40
+        ? "Time saver: cut 1 accessory movement and keep intensity."
+        : time > 75
+          ? "Add-on: 10 min incline walk + extra stretching."
+          : "Perfect. Keep rest times honest.";
+
+      const box = document.getElementById("workoutResult");
+      box.style.display = "block";
+      box.innerHTML = `
+        <strong>Your vibe:</strong> ${outfit}<br><br>
+        <strong>Workout:</strong> ${plan}<br>
+        <span class="tiny">${tweak}</span>
+      `;
+    });
+
+    document.getElementById("calc").addEventListener("click", () => {
+      const price = Number(document.getElementById("price").value || 0);
+      const qty = Number(document.getElementById("qty").value || 0);
+      const pct = Number(document.getElementById("pct").value || 0);
+
+      const revenue = price * qty;
+      const donation = revenue * (pct / 100);
+
+      const box = document.getElementById("donationResult");
+      box.style.display = "block";
+      box.innerHTML = `
+        <strong>Revenue:</strong> $${revenue.toFixed(2)}<br>
+        <strong>Donation (${pct}%):</strong> $${donation.toFixed(2)}<br>
+        <span class="tiny">Adjust price/qty/% to model scenarios.</span>
+      `;
+    });
+  </script>
+</body>
+</html>
